@@ -88,7 +88,7 @@
         ...items.map(item => item.qty + " × " + item.name + " — " + formatPeso(item.price * item.qty)),
         "",
         "Items subtotal: " + formatPeso(subtotal),
-      ].join("\\n");
+      ].join("\n");
       alertBox.textContent = (error.message || "Online checkout is temporarily unavailable.") + " This website could not start a payment. You can email an order request instead; it will not charge you.";
       const emailLink = document.createElement("a");
       emailLink.href = "mailto:" + ownerEmail + "?subject=" + encodeURIComponent("Zeltech order request") + "&body=" + encodeURIComponent(orderDetails);
