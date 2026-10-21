@@ -94,7 +94,7 @@
 
     const cartItems = (window.getCart() || []).map(item => ({ id: String(item.id), quantity: Number(item.qty) }));
     if (!cartItems.length || cartItems.some(item => !Number.isInteger(item.quantity) || item.quantity < 1)) {
-      alertBox.textContent = "Your cart needs a valid item before you can send an order request.";
+      alertBox.textContent = "Your cart needs a valid item before you can request email confirmation.";
       alertBox.classList.add("show");
       return;
     }
