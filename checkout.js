@@ -72,7 +72,30 @@
       if (paymentUrl.protocol !== "https:" || !(paymentUrl.hostname === "checkout.xendit.co" || paymentUrl.hostname.endsWith(".xendit.co"))) throw new Error("The payment provider returned an invalid checkout link.");
       window.location.assign(paymentUrl.href);
     } catch (error) {
-      alertBox.textContent = error.message || "Checkout is temporarily unavailable."; alertBox.classList.add("show");
+      const customer = Object.fromEntries(new FormData(form).entries());
+      const items = window.getCart() || [];
+      const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+      const orderDetails = [
+        "ORDER REQUEST — PAYMENT NOT YET MADE",
+        "",
+        "Customer: " + customer.name,
+        "Email: " + customer.email,
+        "Mobile: " + customer.phone,
+        "Delivery address: " + customer.address,
+        "Preferred payment method: " + selectedPaymentMethod,
+        "",
+        "Items:",
+        ...items.map(item => item.qty + " × " + item.name + " — " + formatPeso(item.price * item.qty)),
+        "",
+        "Items subtotal: " + formatPeso(subtotal),
+      ].join("\\n");
+      alertBox.textContent = (error.message || "Online checkout is temporarily unavailable.") + " This website could not start a payment. You can email an order request instead; it will not charge you.";
+      const emailLink = document.createElement("a");
+      emailLink.href = "mailto:" + ownerEmail + "?subject=" + encodeURIComponent("Zeltech order request") + "&body=" + encodeURIComponent(orderDetails);
+      emailLink.textContent = "Email order request";
+      emailLink.style.cssText = "display:inline-block;margin-top:8px;color:#c6f36b;text-decoration:underline;font-weight:600";
+      alertBox.append(document.createElement("br"), emailLink);
+      alertBox.classList.add("show");
     } finally {
       submit.disabled = false; submit.textContent = "Continue to secure payment ↗";
     }
