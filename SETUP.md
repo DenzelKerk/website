@@ -15,7 +15,7 @@ The EmailJS service and two templates are set up. The site configuration points 
 
 **Buyer receipt template**
 
-- To Email: `{{customer_email}}`
+- To Email: `{{to_email}}` (the checkout sends the buyer's address in this field)
 - Subject: `We received your Zeltech order request {{order_id}}`
 - Reply-To: `yasuicide600@gmail.com`
 - Include `{{order_id}}`, `{{order_items}}`, `{{order_total}}`, `{{payment_preference}}`, and `{{payment_status}}`. The `order_items` value includes instructions for the buyer to reply with `I confirm order {{order_id}}` or reply with changes/cancellation before payment.
