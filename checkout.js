@@ -28,10 +28,10 @@
         </div>
         <p class="checkout-kicker" style="margin-top:24px">Preferred payment arrangement</p>
         <div class="checkout-methods" role="group" aria-label="Choose a preferred payment arrangement"><button class="checkout-method" type="button" data-payment-method="gcash" aria-pressed="false">GCash<span>We’ll send instructions by email</span></button><button class="checkout-method" type="button" data-payment-method="maya" aria-pressed="false">Maya<span>We’ll send instructions by email</span></button><button class="checkout-method" type="button" data-payment-method="bank" aria-pressed="false">Bank transfer<span>We’ll send instructions by email</span></button><button class="checkout-method" type="button" data-payment-method="cod" aria-pressed="false">Cash on delivery<span>Subject to Zeltech confirmation</span></button><button class="checkout-method" type="button" data-payment-method="contact" aria-pressed="false">Contact me<span>Help me choose later</span></button></div>
-        <p class="checkout-note">This sends an order request to Zeltech. No payment is taken here. We’ll confirm availability and email you to arrange payment.</p>
+        <p class="checkout-note">We’ll email you a review link first. Zeltech receives the order only after you confirm the item list. No payment is taken here.</p>
         <div class="checkout-alert" id="checkout-alert" role="status" aria-live="polite"></div>
-        <div class="checkout-actions"><button class="checkout-submit" id="checkout-submit" type="submit">Send order request ✉</button></div><p class="checkout-provider">ORDER REQUEST ONLY — PAYMENT IS ARRANGED SEPARATELY</p></form>
-      </div><aside class="checkout-aside"><p class="checkout-kicker">Order summary</p><div id="checkout-lines"></div><div class="checkout-total"><span>Items subtotal</span><strong id="checkout-subtotal">₱0</strong></div><p class="checkout-note">Your order is not confirmed until Zeltech replies. Shipping and final availability will be confirmed by email.</p></aside></div>
+        <div class="checkout-actions"><button class="checkout-submit" id="checkout-submit" type="submit">Email me to confirm these items ✉</button></div><p class="checkout-provider">EMAIL CONFIRMATION FIRST — NO PAYMENT TAKEN</p></form>
+      </div><aside class="checkout-aside"><p class="checkout-kicker">Order summary</p><div id="checkout-lines"></div><div class="checkout-total"><span>Items subtotal</span><strong id="checkout-subtotal">₱0</strong></div><p class="checkout-note">Review the product list in your email and confirm it before Zeltech receives the order.</p></aside></div>
     </section>`;
   document.body.append(backdrop);
 
@@ -61,7 +61,7 @@
     selectedPaymentMethod = "";
     backdrop.querySelectorAll("[data-payment-method]").forEach(option => option.setAttribute("aria-pressed", "false"));
     submit.disabled = false;
-    submit.textContent = "Send order request ✉";
+    submit.textContent = "Email me to confirm these items ✉";
     alertBox.classList.remove("show", "success");
     alertBox.textContent = "";
     paintSummary();
@@ -82,19 +82,6 @@
     openCheckout();
   };
 
-  function emailJsConfigured(config) {
-    return config && [config.publicKey, config.serviceId, config.ownerTemplateId, config.buyerTemplateId].every(value => typeof value === "string" && value.trim() && !value.startsWith("YOUR_EMAILJS_"));
-  }
-
-  async function sendEmail(templateId, publicKey, serviceId, params) {
-    const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ service_id: serviceId, template_id: templateId, user_id: publicKey, template_params: params }),
-    });
-    if (!response.ok) {\n      const detail = (await response.text()).trim().slice(0, 300);\n      throw new Error(`EmailJS error ${response.status}${detail ? `: ${detail}` : " while sending the email."}`);\n    }
-  }
-
   form.addEventListener("submit", async event => {
     event.preventDefault();
     if (requestSent) return;
@@ -105,77 +92,49 @@
       return;
     }
 
-    const savedConfig = window.ZELTECH_EMAILJS_CONFIG;
-    const config = emailJsConfigured(savedConfig) ? savedConfig : {
-      publicKey: "Qji7gvMFo3M8V5oAL",
-      serviceId: "service_5jgu7m9",
-      ownerTemplateId: "template_khraumm",
-      buyerTemplateId: "template_8cqlw3g",
-    };
-    if (!emailJsConfigured(config)) {
-      alertBox.textContent = "EmailJS is not connected yet. Zeltech must add the EmailJS service ID, both template IDs, and public key to emailjs-config.js.";
-      alertBox.classList.add("show");
-      return;
-    }
-
-    const cartItems = (window.getCart() || []).map(item => ({ name: String(item.name), quantity: Number(item.qty), price: Number(item.price) }));
-    if (!cartItems.length || cartItems.some(item => !Number.isInteger(item.quantity) || item.quantity < 1 || !Number.isFinite(item.price) || item.price < 0)) {
+    const cartItems = (window.getCart() || []).map(item => ({ id: String(item.id), quantity: Number(item.qty) }));
+    if (!cartItems.length || cartItems.some(item => !Number.isInteger(item.quantity) || item.quantity < 1)) {
       alertBox.textContent = "Your cart needs a valid item before you can send an order request.";
       alertBox.classList.add("show");
       return;
     }
 
     const data = new FormData(form);
-    const orderId = `ZEL-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    const customerName = String(data.get("name")).trim();
     const customerEmail = String(data.get("email")).trim();
-    const itemsText = cartItems.map(item => `${item.quantity} × ${item.name} — ${formatPeso(item.price * item.quantity)}`).join("\n");
-    const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const paymentLabels = { gcash: "GCash", maya: "Maya", bank: "Bank transfer", cod: "Cash on delivery", contact: "Contact me about options" };
-    const templateParams = {
-      order_id: orderId,
-      customer_name: customerName,
-      customer_email: customerEmail,
-      customer_phone: String(data.get("phone")).trim(),
-      shipping_address: String(data.get("address")).trim(),
-      order_items: itemsText,
-      order_total: formatPeso(total),
-      payment_preference: paymentLabels[selectedPaymentMethod],
-      payment_status: "PENDING — order request only; no payment collected",
-      reply_to: customerEmail,
+    const requestBody = {
+      name: String(data.get("name")).trim(),
+      email: customerEmail,
+      phone: String(data.get("phone")).trim(),
+      address: String(data.get("address")).trim(),
+      paymentPreference: selectedPaymentMethod,
+      items: cartItems,
     };
 
     submit.disabled = true;
-    submit.textContent = "Sending order request…";
+    submit.textContent = "Sending confirmation email…";
     try {
-      await sendEmail(config.ownerTemplateId, config.publicKey, config.serviceId, templateParams);
-      let buyerReceiptSent = true;
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1100));
-        const buyerTemplateParams = {
-          ...templateParams,
-          order_items: `${itemsText}\n\nTo confirm these items, reply to this email with “I confirm order ${orderId}.” To change or cancel, reply with the changes before payment.`,
-        };
-        await sendEmail(config.buyerTemplateId, config.publicKey, config.serviceId, buyerTemplateParams);
-      } catch {
-        buyerReceiptSent = false;
-      }
+      const response = await fetch("/api/request-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 404) throw new Error("Email confirmation needs Cloudflare Pages Functions. Open Zeltech from its Cloudflare Pages address, not GitHub Pages.");
+      if (!response.ok) throw new Error(result.error || "Could not send the confirmation email. Please try again.");
 
       requestSent = true;
       if (typeof window.clearCart === "function") window.clearCart();
       paintSummary();
       form.reset();
-      alertBox.textContent = buyerReceiptSent
-        ? `Order request ${orderId} sent to Zeltech. Check your email and reply “I confirm order ${orderId}” to confirm these items. No payment has been collected; Zeltech will follow up with payment instructions.`
-        : `Order request ${orderId} reached Zeltech, but the buyer confirmation email failed: ${buyerEmailError}. No payment has been collected. Contact ${ownerEmail} if you need to follow up.`;
+      alertBox.textContent = `We sent a confirmation email to ${customerEmail}. Review the items there and click the confirmation link before the order is sent to Zeltech. No payment has been collected.`;
       alertBox.classList.add("show", "success");
-      submit.textContent = "Order request sent ✓";
-      if (typeof window.toast === "function") window.toast("Order request sent — payment is pending");
+      submit.textContent = "Confirmation email sent ✓";
+      if (typeof window.toast === "function") window.toast("Check your email to confirm the items");
     } catch (error) {
-      alertBox.textContent = error.message || "Could not send the order request. Please try again or contact Zeltech.";
+      alertBox.textContent = error.message || `Could not send the confirmation email. Contact ${ownerEmail} if you need help.`;
       alertBox.classList.add("show");
       submit.disabled = false;
-      submit.textContent = "Send order request ✉";
+      submit.textContent = "Email me to confirm these items ✉";
     }
   });
 })();
