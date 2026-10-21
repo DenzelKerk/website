@@ -105,7 +105,13 @@
       return;
     }
 
-    const config = window.ZELTECH_EMAILJS_CONFIG;
+    const savedConfig = window.ZELTECH_EMAILJS_CONFIG;
+    const config = emailJsConfigured(savedConfig) ? savedConfig : {
+      publicKey: "Qji7gvMFo3M8V5oAL",
+      serviceId: "service_5jgu7m9",
+      ownerTemplateId: "template_khraumm",
+      buyerTemplateId: "template_8cqlw3g",
+    };
     if (!emailJsConfigured(config)) {
       alertBox.textContent = "EmailJS is not connected yet. Zeltech must add the EmailJS service ID, both template IDs, and public key to emailjs-config.js.";
       alertBox.classList.add("show");
