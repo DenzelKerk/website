@@ -154,7 +154,7 @@
         await new Promise(resolve => setTimeout(resolve, 1100));
         const buyerTemplateParams = {
           ...templateParams,
-          order_items: `${itemsText}\\n\\nTo confirm these items, reply to this email with “I confirm order ${orderId}.” To change or cancel, reply with the changes before payment.`,
+          order_items: `${itemsText}\n\nTo confirm these items, reply to this email with “I confirm order ${orderId}.” To change or cancel, reply with the changes before payment.`,
         };
         await sendEmail(config.buyerTemplateId, config.publicKey, config.serviceId, buyerTemplateParams);
       } catch {
