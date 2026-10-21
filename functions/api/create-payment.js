@@ -47,12 +47,10 @@ export async function onRequestPost({ request, env }) {
   const amount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (amount < 1 || amount > 1000000) return json({ error: "This order total is outside the supported range." }, 400);
 
-  const orderId = \`zeltech-\${crypto.randomUUID()}\`;
-  const cancelToken = \`\${crypto.randomUUID()}\${crypto.randomUUID()}\`.replaceAll("-", "");
+  const orderId = "zeltech-" + crypto.randomUUID();
+  const cancelToken = (crypto.randomUUID() + crypto.randomUUID()).replaceAll("-", "");
   const origin = new URL(request.url).origin;
-  await env.DB.prepare(\`INSERT INTO zeltech_orders
-    (order_id, customer_name, customer_email, customer_phone, shipping_address, items_json, amount, preferred_payment_method, status, cancel_token, confirmation_sent, cancellation_email_sent, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, 0, 0, CURRENT_TIMESTAMP)\`)
+  await env.DB.prepare("INSERT INTO zeltech_orders (order_id, customer_name, customer_email, customer_phone, shipping_address, items_json, amount, preferred_payment_method, status, cancel_token, confirmation_sent, cancellation_email_sent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, 0, 0, CURRENT_TIMESTAMP)")
     .bind(orderId, name, email, phone, address, JSON.stringify(items), amount, paymentPreference, cancelToken).run();
 
   const payload = {
@@ -65,8 +63,8 @@ export async function onRequestPost({ request, env }) {
           quantity: item.quantity,
         })),
         payment_method_types: [paymentMethod],
-        success_url: \`\${origin}/?payment=returned&order=\${encodeURIComponent(orderId)}\`,
-        cancel_url: \`\${origin}/?payment=cancelled&order=\${encodeURIComponent(orderId)}\`,
+        success_url: origin + "/?payment=returned&order=" + encodeURIComponent(orderId),
+        cancel_url: origin + "/?payment=cancelled&order=" + encodeURIComponent(orderId),
         reference_number: orderId,
         send_email_receipt: true,
         billing: { name, email, phone },
@@ -80,7 +78,7 @@ export async function onRequestPost({ request, env }) {
     response = await fetch("https://api.paymongo.com/v2/checkout_sessions", {
       method: "POST",
       headers: {
-        authorization: \`Basic \${btoa(\`\${env.PAYMONGO_SECRET_KEY}:\`)}\`,
+        authorization: "Basic " + btoa(env.PAYMONGO_SECRET_KEY + ":"),
         "content-type": "application/json",
         "Idempotency-Key": orderId,
       },
