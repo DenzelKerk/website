@@ -10,15 +10,13 @@ function safeEqual(left, right) {
   return difference === 0;
 }
 
-async function validSignature(rawBody, signatureHeader, secret, isLive) {
+async function validSignature(rawBody, signatureHeader, secret) {
   if (!signatureHeader || !secret) return false;
   const parts = Object.fromEntries(signatureHeader.split(",").map(part => {
     const separator = part.indexOf("=");
     return separator < 0 ? [part.trim(), ""] : [part.slice(0, separator).trim(), part.slice(separator + 1).trim()];
   }));
   if (!/^\d+$/.test(parts.t || "")) return false;
-  const supplied = isLive ? parts.li : parts.te;
-  if (!supplied) return false;
 
   const key = await crypto.subtle.importKey(
     "raw",
@@ -28,14 +26,17 @@ async function validSignature(rawBody, signatureHeader, secret, isLive) {
     ["sign"],
   );
   const signed = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(parts.t + "." + rawBody));
-  const expected = [...new Uint8Array(signed)].map(byte => byte.toString(16).padStart(2, "0")).join("");
-  return safeEqual(expected.toLowerCase(), supplied.toLowerCase());
+  const expected = [...new Uint8Array(signed)].map(byte => byte.toString(16).padStart(2, "0")).join("").toLowerCase();
+  return safeEqual(expected, (parts.te || "").toLowerCase()) || safeEqual(expected, (parts.li || "").toLowerCase());
 }
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB || !env.PAYMONGO_WEBHOOK_SECRET) return json({ error: "Webhook is not configured." }, 503);
 
   const rawBody = await request.text();
+  const signature = request.headers.get("paymongo-signature") || "";
+  if (!await validSignature(rawBody, signature, env.PAYMONGO_WEBHOOK_SECRET)) return json({ error: "Unauthorized." }, 401);
+
   let event;
   try { event = JSON.parse(rawBody); } catch { return json({ error: "Invalid webhook body." }, 400); }
 
@@ -43,9 +44,6 @@ export async function onRequestPost({ request, env }) {
   const eventAttributes = eventData && eventData.attributes || {};
   const session = eventAttributes.data || eventData && eventData.data;
   const sessionAttributes = session && session.attributes || {};
-  const isLive = Boolean(eventAttributes.livemode ?? (eventData && eventData.livemode) ?? sessionAttributes.livemode);
-  const signature = request.headers.get("paymongo-signature") || "";
-  if (!await validSignature(rawBody, signature, env.PAYMONGO_WEBHOOK_SECRET, isLive)) return json({ error: "Unauthorized." }, 401);
 
   const eventType = eventAttributes.type || eventData && eventData.type || event && event.event_type;
   if (eventType !== "checkout_session.payment.paid") return json({ received: true });
