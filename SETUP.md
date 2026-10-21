@@ -18,13 +18,13 @@ The EmailJS service and two templates are set up. The site configuration points 
 - To Email: `{{customer_email}}`
 - Subject: `We received your Zeltech order request {{order_id}}`
 - Reply-To: `yasuicide600@gmail.com`
-- Include the order ID, items, total, preferred payment arrangement, and a note that payment is still pending.
+- Include `{{order_id}}`, `{{order_items}}`, `{{order_total}}`, `{{payment_preference}}`, and `{{payment_status}}`. The `order_items` value includes instructions for the buyer to reply with `I confirm order {{order_id}}` or reply with changes/cancellation before payment.
 
 Use EmailJS's double-brace variables (`{{variable_name}}`) in each template. In the EmailJS dashboard, allow the public Zeltech site domain, such as `zeltech.pages.dev`, if domain restrictions are enabled.
 
 ## Deploy and verify
 
-The current EmailJS IDs are configured in `emailjs-config.js`. The public key is intended for browser use. Never put an EmailJS private key or email password in the site files.
+The buyer's email shows the item list and lets them confirm by replying to the receipt with the order ID. This is a manual confirmation by email; it does not automatically update the website or collect payment. The current EmailJS IDs are configured in `emailjs-config.js`. The public key is intended for browser use. Never put an EmailJS private key or email password in the site files.
 
 Deploy the site to Cloudflare Pages, then place a small test order with an email address you can access and verify that both emails arrive. A success message means the order request emails were accepted; it does not mean the order was paid or confirmed.
 
