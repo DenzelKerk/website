@@ -27,7 +27,7 @@
         </div>
         <p class="checkout-kicker" style="margin-top:24px">Online payment options</p>
         <div class="checkout-methods" role="group" aria-label="Choose a preferred payment method"><button class="checkout-method" type="button" data-payment-method="gcash" aria-pressed="false">GCash<span>E-wallet</span></button><button class="checkout-method" type="button" data-payment-method="maya" aria-pressed="false">Maya<span>E-wallet</span></button><button class="checkout-method" type="button" data-payment-method="grabpay" aria-pressed="false">GrabPay<span>E-wallet</span></button><button class="checkout-method" type="button" data-payment-method="shopeepay" aria-pressed="false">ShopeePay<span>E-wallet</span></button><button class="checkout-method" type="button" data-payment-method="qrph" aria-pressed="false">QR Ph<span>Scan to pay</span></button><button class="checkout-method" type="button" data-payment-method="bank" aria-pressed="false">BDO / BPI / other banks<span>Online bank channels</span></button><button class="checkout-method" type="button" data-payment-method="card" aria-pressed="false">Credit / debit cards<span>Card checkout</span></button></div>
-        <p class="checkout-note">You’ll choose from the payment methods enabled on Zeltech’s secure Xendit checkout. Method availability depends on merchant activation. Shipping is arranged separately; this checkout charges the item subtotal shown.</p>
+        <p class="checkout-note">You’ll pay on PayMongo’s secure checkout using the selected method, if it is enabled on Zeltech’s account. Shipping is arranged separately; checkout charges the item subtotal shown.</p>
         <div class="checkout-alert" id="checkout-alert" role="alert"></div>
         <div class="checkout-actions"><button class="checkout-submit" id="checkout-submit" type="submit">Continue to secure payment ↗</button></div><p class="checkout-provider">PAYMENT DETAILS ARE ENTERED ON XENDIT — NEVER ON THIS PAGE</p></form>
       </div><aside class="checkout-aside"><p class="checkout-kicker">Order summary</p><div id="checkout-lines"></div><div class="checkout-total"><span>Items subtotal</span><strong id="checkout-subtotal">₱0</strong></div><p class="checkout-note">After payment, keep your Xendit receipt. Zeltech will contact you about shipping.</p></aside></div>
@@ -69,7 +69,7 @@
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "Could not start payment. Please try again.");
       const paymentUrl = new URL(result.checkoutUrl);
-      if (paymentUrl.protocol !== "https:" || !(paymentUrl.hostname === "checkout.xendit.co" || paymentUrl.hostname.endsWith(".xendit.co"))) throw new Error("The payment provider returned an invalid checkout link.");
+      if (paymentUrl.protocol !== "https:" || paymentUrl.hostname !== "checkout.paymongo.com") throw new Error("PayMongo returned an invalid checkout link.");
       window.location.assign(paymentUrl.href);
     } catch (error) {
       const customer = Object.fromEntries(new FormData(form).entries());
