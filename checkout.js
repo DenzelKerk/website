@@ -92,7 +92,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ service_id: serviceId, template_id: templateId, user_id: publicKey, template_params: params }),
     });
-    if (!response.ok) throw new Error("EmailJS could not send the order email. Check the EmailJS service, template, and domain settings.");
+    if (!response.ok) {\n      const detail = (await response.text()).trim().slice(0, 300);\n      throw new Error(`EmailJS error ${response.status}${detail ? `: ${detail}` : " while sending the email."}`);\n    }
   }
 
   form.addEventListener("submit", async event => {
@@ -167,7 +167,7 @@
       form.reset();
       alertBox.textContent = buyerReceiptSent
         ? `Order request ${orderId} sent to Zeltech. Check your email and reply “I confirm order ${orderId}” to confirm these items. No payment has been collected; Zeltech will follow up with payment instructions.`
-        : `Order request ${orderId} reached Zeltech, but we could not send your email copy. No payment has been collected. Contact ${ownerEmail} if you need to follow up.`;
+        : `Order request ${orderId} reached Zeltech, but the buyer confirmation email failed: ${buyerEmailError}. No payment has been collected. Contact ${ownerEmail} if you need to follow up.`;
       alertBox.classList.add("show", "success");
       submit.textContent = "Order request sent ✓";
       if (typeof window.toast === "function") window.toast("Order request sent — payment is pending");
