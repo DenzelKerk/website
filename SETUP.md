@@ -1,27 +1,34 @@
-# Zeltech order emails and cancellations
+# Zeltech EmailJS order requests
 
-The payment confirmation and cancellation emails run on **Cloudflare Pages Functions**. GitHub Pages can host the front-end files but cannot run these API endpoints. Deploy the site with the project root as the Pages build output, and keep the top-level `functions/` directory alongside `index.html`.
+The checkout now sends an order request to Zeltech and an email copy to the buyer. It does not collect or verify payment. Zeltech must confirm the order and arrange GCash, Maya, bank transfer, or cash on delivery separately.
 
-## 1. Create the order database
+## 1. Create the EmailJS service and templates
 
-Create a Cloudflare D1 database and bind it to the Pages project using the binding name `DB`. Run `schema.sql` against that database before accepting orders.
+In EmailJS, connect the email service that will send Zeltech messages, then create two templates.
 
-## 2. Add server-side secrets and settings
+**Owner order template**
 
-Add these as Cloudflare Pages environment variables/secrets. Never put secret values into HTML or JavaScript.
+- To Email: `yasuicide600@gmail.com` (set this directly in the template)
+- Subject: `Zeltech order request {{order_id}} — payment pending`
+- Reply-To: `{{customer_email}}`
+- Include these variables in the body: `{{order_id}}`, `{{customer_name}}`, `{{customer_email}}`, `{{customer_phone}}`, `{{shipping_address}}`, `{{order_items}}`, `{{order_total}}`, `{{payment_preference}}`, and `{{payment_status}}`.
 
-- `XENDIT_SECRET_KEY`: Xendit secret API key.
-- `XENDIT_CALLBACK_TOKEN`: the callback verification token from Xendit's invoice webhook settings.
-- `RESEND_API_KEY`: Resend API key.
-- `ORDER_EMAIL_FROM`: sender address on a domain verified with Resend, such as `Zeltech <orders@your-verified-domain>`.
-- `ZELTECH_OWNER_EMAIL`: `yasuicide600@gmail.com` (optional; the code defaults to this address).
+**Buyer receipt template**
 
-## 3. Configure Xendit
+- To Email: `{{customer_email}}`
+- Subject: `We received your Zeltech order request {{order_id}}`
+- Reply-To: `yasuicide600@gmail.com`
+- Include the order ID, items, total, preferred payment arrangement, and a note that payment is still pending.
 
-Enable the payment channels you want on your merchant account and set the invoice webhook URL to `https://YOUR_SITE/api/xendit-webhook`. A buyer is emailed only after the authenticated webhook reports the invoice as `PAID`; the browser return URL alone never marks an order paid.
+Use EmailJS's double-brace variables (`{{variable_name}}`) in each template. In the EmailJS dashboard, restrict allowed domains to the public Zeltech site domain, such as `zeltech.pages.dev`.
 
-## Buyer confirmation and cancellations
+## 2. Add the EmailJS IDs to the site
 
-The buyer email contains the paid order summary and a **Request an order cancellation** link. The buyer chooses a reason (ordered by mistake, no longer needed, delivery issue, or other) and may add details. The request is recorded and emailed to the owner and buyer. It does not automatically refund a paid order; the owner reviews the request and handles any refund through Xendit.
+Edit `emailjs-config.js` and replace the four `YOUR_EMAILJS_...` values with the EmailJS Public Key, Service ID, Owner Template ID, and Buyer Template ID. The public key is intended for browser use. Never put an EmailJS private key or email password in this file.
 
-Shipping is still arranged separately and is not included in the checkout total.
+Deploy the site to Cloudflare Pages, then place a small test order and verify that both emails arrive. A success message means the order request emails were accepted; it does not mean the order was paid or confirmed.
+
+## Customer cancellation and payment
+
+Because this email-only flow does not store orders in the site database or process payments, customers should reply to the order email to request cancellation. Zeltech confirms payment manually through its chosen payment method. Automatic payment confirmation, refunds, and the prior Xendit cancellation workflow require a payment provider and server-side order storage.
+
