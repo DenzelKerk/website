@@ -152,7 +152,11 @@
       let buyerReceiptSent = true;
       try {
         await new Promise(resolve => setTimeout(resolve, 1100));
-        await sendEmail(config.buyerTemplateId, config.publicKey, config.serviceId, templateParams);
+        const buyerTemplateParams = {
+          ...templateParams,
+          order_items: `${itemsText}\\n\\nTo confirm these items, reply to this email with “I confirm order ${orderId}.” To change or cancel, reply with the changes before payment.`,
+        };
+        await sendEmail(config.buyerTemplateId, config.publicKey, config.serviceId, buyerTemplateParams);
       } catch {
         buyerReceiptSent = false;
       }
@@ -162,7 +166,7 @@
       paintSummary();
       form.reset();
       alertBox.textContent = buyerReceiptSent
-        ? `Order request ${orderId} sent to Zeltech. A copy was sent to your email. No payment has been collected; wait for Zeltech to confirm your order and payment instructions.`
+        ? `Order request ${orderId} sent to Zeltech. Check your email and reply “I confirm order ${orderId}” to confirm these items. No payment has been collected; Zeltech will follow up with payment instructions.`
         : `Order request ${orderId} reached Zeltech, but we could not send your email copy. No payment has been collected. Contact ${ownerEmail} if you need to follow up.`;
       alertBox.classList.add("show", "success");
       submit.textContent = "Order request sent ✓";
