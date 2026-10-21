@@ -43,7 +43,7 @@ export async function onRequestPost({ request, env }) {
   const eventAttributes = eventData && eventData.attributes || {};
   const session = eventAttributes.data || eventData && eventData.data;
   const sessionAttributes = session && session.attributes || {};
-  const isLive = Boolean(eventAttributes.livemode ?? eventData && eventData.livemode ?? sessionAttributes.livemode);
+  const isLive = Boolean(eventAttributes.livemode ?? (eventData && eventData.livemode) ?? sessionAttributes.livemode);
   const signature = request.headers.get("paymongo-signature") || "";
   if (!await validSignature(rawBody, signature, env.PAYMONGO_WEBHOOK_SECRET, isLive)) return json({ error: "Unauthorized." }, 401);
 
