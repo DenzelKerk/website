@@ -72,7 +72,7 @@ export async function onRequestPost({ request, env }) {
   const amount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (amount < 1 || amount > 1000000) return json({ error: "This order total is outside the supported range." }, 400);
 
-  const orderId = `ZEL-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const orderId = `ZEL-${crypto.randomUUID().toUpperCase()}`;
   const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
   const token = [...tokenBytes].map(value => value.toString(16).padStart(2, "0")).join("");
   const tokenHash = await hashConfirmationToken(token);
