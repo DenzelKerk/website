@@ -28,10 +28,10 @@
         </div>
         <p class="checkout-kicker" style="margin-top:24px">Preferred payment arrangement</p>
         <div class="checkout-methods" role="group" aria-label="Choose a preferred payment arrangement"><button class="checkout-method" type="button" data-payment-method="gcash" aria-pressed="false">GCash<span>We’ll send instructions by email</span></button><button class="checkout-method" type="button" data-payment-method="maya" aria-pressed="false">Maya<span>We’ll send instructions by email</span></button><button class="checkout-method" type="button" data-payment-method="bank" aria-pressed="false">Bank transfer<span>We’ll send instructions by email</span></button><button class="checkout-method" type="button" data-payment-method="cod" aria-pressed="false">Cash on delivery<span>Subject to Zeltech confirmation</span></button><button class="checkout-method" type="button" data-payment-method="contact" aria-pressed="false">Contact me<span>Help me choose later</span></button></div>
-        <p class="checkout-note">We’ll email you a review link first. Zeltech receives the order only after you confirm the item list. No payment is taken here.</p>
+        <p class="checkout-note">We’ll email your item list first. Reply to that email with CONFIRM to place the order, or CHANGE / CANCEL if needed. Zeltech receives your order only when you reply.</p>
         <div class="checkout-alert" id="checkout-alert" role="status" aria-live="polite"></div>
-        <div class="checkout-actions"><button class="checkout-submit" id="checkout-submit" type="submit">Email me to confirm these items ✉</button></div><p class="checkout-provider">EMAIL CONFIRMATION FIRST — NO PAYMENT TAKEN</p></form>
-      </div><aside class="checkout-aside"><p class="checkout-kicker">Order summary</p><div id="checkout-lines"></div><div class="checkout-total"><span>Items subtotal</span><strong id="checkout-subtotal">₱0</strong></div><p class="checkout-note">Review the product list in your email and confirm it before Zeltech receives the order.</p></aside></div>
+        <div class="checkout-actions"><button class="checkout-submit" id="checkout-submit" type="submit">Email my items for confirmation ✉</button></div><p class="checkout-provider">EMAIL CONFIRMATION FIRST — NO PAYMENT TAKEN</p></form>
+      </div><aside class="checkout-aside"><p class="checkout-kicker">Order summary</p><div id="checkout-lines"></div><div class="checkout-total"><span>Items subtotal</span><strong id="checkout-subtotal">₱0</strong></div><p class="checkout-note">The email goes to you first. Reply CONFIRM to send your order to Zeltech.</p></aside></div>
     </section>`;
   document.body.append(backdrop);
 
@@ -61,7 +61,7 @@
     selectedPaymentMethod = "";
     backdrop.querySelectorAll("[data-payment-method]").forEach(option => option.setAttribute("aria-pressed", "false"));
     submit.disabled = false;
-    submit.textContent = "Email me to confirm these items ✉";
+    submit.textContent = "Email my items for confirmation ✉";
     alertBox.classList.remove("show", "success");
     alertBox.textContent = "";
     paintSummary();
@@ -113,28 +113,53 @@
     submit.disabled = true;
     submit.textContent = "Sending confirmation email…";
     try {
-      const response = await fetch("/api/request-confirmation", {
+      const config = window.ZELTECH_EMAILJS_CONFIG;
+      if (!config?.publicKey || !config?.serviceId || !config?.buyerTemplateId) {
+        throw new Error("EmailJS is not configured. Check emailjs-config.js.");
+      }
+      const orderId = `ZEL-${Date.now().toString(36).toUpperCase()}`;
+      const orderItems = (window.getCart() || []).map(item => `${Number(item.qty)} × ${item.name} — ${formatPeso(Number(item.qty) * Number(item.price))}`).join("\n");
+      const templateParams = {
+        order_id: orderId,
+        customer_name: requestBody.name,
+        customer_email: customerEmail,
+        to_email: customerEmail,
+        customer_phone: requestBody.phone,
+        shipping_address: requestBody.address,
+        order_items: `${orderItems}\n\nTo place this order, reply to this email with CONFIRM. Reply CHANGE to request an edit or CANCEL to stop. Zeltech receives the order only after you reply.`,
+        order_total: formatPeso((window.getCart() || []).reduce((sum, item) => sum + Number(item.qty) * Number(item.price), 0)),
+        payment_preference: requestBody.paymentPreference,
+        payment_status: "Awaiting buyer email confirmation; no payment collected",
+        reply_to: ownerEmail,
+      };
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          service_id: config.serviceId,
+          template_id: config.buyerTemplateId,
+          user_id: config.publicKey,
+          template_params: templateParams,
+        }),
       });
-      const result = await response.json().catch(() => ({}));
-      if (response.status === 404) throw new Error("Email confirmation needs Cloudflare Pages Functions. Open Zeltech from its Cloudflare Pages address, not GitHub Pages.");
-      if (!response.ok) throw new Error(result.error || "Could not send the confirmation email. Please try again.");
+      if (!response.ok) {
+        const detail = (await response.text()).trim().slice(0, 240);
+        throw new Error(`EmailJS could not send the confirmation email${detail ? `: ${detail}` : ". Check the EmailJS template and allowed domain."}`);
+      }
 
       requestSent = true;
       if (typeof window.clearCart === "function") window.clearCart();
       paintSummary();
       form.reset();
-      alertBox.textContent = `We sent a confirmation email to ${customerEmail}. Review the items there and click the confirmation link before the order is sent to Zeltech. No payment has been collected.`;
+      alertBox.textContent = `We sent your item list to ${customerEmail}. Reply to that email with CONFIRM to place the order, or CHANGE / CANCEL. Zeltech will receive it only after you reply. No payment has been collected.`;
       alertBox.classList.add("show", "success");
       submit.textContent = "Confirmation email sent ✓";
-      if (typeof window.toast === "function") window.toast("Check your email to confirm the items");
+      if (typeof window.toast === "function") window.toast("Check your email to confirm your items");
     } catch (error) {
       alertBox.textContent = error.message || `Could not send the confirmation email. Contact ${ownerEmail} if you need help.`;
       alertBox.classList.add("show");
       submit.disabled = false;
-      submit.textContent = "Email me to confirm these items ✉";
+      submit.textContent = "Email my items for confirmation ✉";
     }
   });
 })();
