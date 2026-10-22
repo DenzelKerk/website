@@ -12,7 +12,7 @@ The site reads its browser-safe EmailJS values from `emailjs-config.js`:
 
 The buyer template should use:
 
-- **To Email:** `{{to_email}}`
+- **To Email:** `{{to_email}}` (the checkout sends this and compatible `email` / `buyer_email` aliases)
 - **Reply-To:** `yasuicide600@gmail.com`
 - **Subject:** `Review your Zeltech order {{order_id}}`
 - **Body variables:** `{{order_id}}`, `{{customer_name}}`, `{{customer_email}}`, `{{customer_phone}}`, `{{shipping_address}}`, `{{order_items}}`, `{{order_total}}`, `{{payment_preference}}`, and `{{payment_status}}`.
