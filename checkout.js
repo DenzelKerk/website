@@ -123,6 +123,8 @@
         order_id: orderId,
         customer_name: requestBody.name,
         customer_email: customerEmail,
+        buyer_email: customerEmail,
+        email: customerEmail,
         to_email: customerEmail,
         customer_phone: requestBody.phone,
         shipping_address: requestBody.address,
@@ -144,6 +146,9 @@
       });
       if (!response.ok) {
         const detail = (await response.text()).trim().slice(0, 240);
+        if (/recipient(?:s)? address is empty/i.test(detail)) {
+          throw new Error(`EmailJS template recipient is empty. In template ${config.buyerTemplateId}, set “To Email” to {{to_email}} (or {{email}}).`);
+        }
         throw new Error(`EmailJS could not send the confirmation email${detail ? `: ${detail}` : ". Check the EmailJS template and allowed domain."}`);
       }
 
